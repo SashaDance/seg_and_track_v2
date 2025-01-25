@@ -1,0 +1,212 @@
+{
+    "count_box_and_containers": 5,
+    "scores": [
+        0.945,
+        0.945,
+        0.944,
+        0.943,
+        0.86
+    ],
+    "classes_ids": [
+        0,
+        1,
+        1,
+        0,
+        1
+    ],
+    "tracking_ids": [
+        998,
+        0,
+        999,
+        1,
+        5
+    ],
+    "boxes": [
+        {
+            "x_min": 408,
+            "y_min": 220,
+            "x_max": 866,
+            "y_max": 556
+        },
+        {
+            "x_min": 1236,
+            "y_min": 381,
+            "x_max": 1366,
+            "y_max": 529
+        },
+        {
+            "x_min": 887,
+            "y_min": 286,
+            "x_max": 1245,
+            "y_max": 540
+        },
+        {
+            "x_min": 512,
+            "y_min": 85,
+            "x_max": 800,
+            "y_max": 233
+        },
+        {
+            "x_min": 1396,
+            "y_min": 400,
+            "x_max": 1439,
+            "y_max": 558
+        }
+    ],
+    "poses": [
+        {
+            "rvec": [
+                [
+                    -2.869,
+                    0.013,
+                    -0.018
+                ]
+            ],
+            "tvec": [
+                [
+                    -0.053,
+                    -0.094,
+                    0.29
+                ]
+            ]
+        },
+        {
+            "rvec": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ],
+            "tvec": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ]
+        },
+        {
+            "rvec": [
+                [
+                    -2.781,
+                    -0.001,
+                    -0.019
+                ]
+            ],
+            "tvec": [
+                [
+                    0.278,
+                    -0.078,
+                    0.319
+                ]
+            ]
+        },
+        {
+            "rvec": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ],
+            "tvec": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ]
+        },
+        {
+            "rvec": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ],
+            "tvec": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ]
+        }
+    ],
+    "box_on_box": false,
+    "man_in_frame": true,
+    "box_container_on_floor": true,
+    "box_or_container_in_frame": true,
+    "right_size_flags": true,
+    "boxes_output": [
+        {
+            "box_id": 998,
+            "placed_on_shelf_with_id": 1
+        },
+        {
+            "box_id": 0,
+            "placed_on_shelf_with_id": -1
+        },
+        {
+            "box_id": 999,
+            "placed_on_shelf_with_id": 2
+        },
+        {
+            "box_id": 0,
+            "placed_on_shelf_with_id": -1
+        },
+        {
+            "box_id": 0,
+            "placed_on_shelf_with_id": -1
+        }
+    ],
+    "shelves": [
+        {
+            "shelf_id": 1,
+            "x": -0.068,
+            "y": 0.089,
+            "occupied_by_box_with_id": 998,
+            "pose": {
+                "rvec": [
+                    [
+                        -2.874,
+                        0.009,
+                        -0.023
+                    ]
+                ],
+                "tvec": [
+                    [
+                        -0.068,
+                        0.089,
+                        0.336
+                    ]
+                ]
+            }
+        },
+        {
+            "shelf_id": 2,
+            "x": 0.272,
+            "y": 0.086,
+            "occupied_by_box_with_id": 999,
+            "pose": {
+                "rvec": [
+                    [
+                        -2.844,
+                        0.039,
+                        0.003
+                    ]
+                ],
+                "tvec": [
+                    [
+                        0.272,
+                        0.086,
+                        0.338
+                    ]
+                ]
+            }
+        }
+    ],
+    "graph_box_on_box": null
+}
