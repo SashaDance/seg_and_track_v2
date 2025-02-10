@@ -23,7 +23,7 @@ from .depth_map import DepthEvaluator, PlaneDetector
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 OUTPUT_DIR = pathlib.Path("/data/seg_and_track")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+# OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 errors = []
 
 def save_json(data, path: pathlib.Path):
@@ -66,23 +66,13 @@ class SegAndTrack:
         # Aruco parameters
         self.aruco_dict = aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
         self.aruco_params = aruco.DetectorParameters_create()
+        self.marker_length = 0.08  # Length of the Aruco marker side
         self.camera_matrix = np.array([[580.77518, 0.0, 724.75002], [0.0, 580.77518, 570.98956], [0.0, 0.0, 1.0]])
         self.dist_coeffs = np.array([0.927077, 0.141438, 0.000196, -8.7e-05, 0.001695, 1.257216, 0.354688, 0.015954])
         self.dist_fish = np.array([0.927077, 0.141438, 0.000196, -8.7e-05])
         self.plane_detector = PlaneDetector(self.camera_matrix)
 
-    def segment_image(self, image_path: str) -> SegAndTrackResponse:
-        img = cv2.imread(image_path)
-        h, w = img.shape[:2]
-        new_matr = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
-            self.camera_matrix, self.dist_fish, (w, h), None
-        )
-        img = cv2.fisheye.undistortImage(img, K=self.camera_matrix, D=self.dist_fish, Knew=new_matr)
-        # Getting depth map of an image before any processing
-        depth_map = self.depth_evaluator.get_depth_map(
-            img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs
-        )
-        # Getting segmentation from models
+    def segment_image_(self, img: np.ndarray, h: int, w: int) -> tuple[list[float], list[int], list[list[int]], np.ndarray]:
         results = self.model(img)[0]
         conf = results.boxes.conf.cpu().numpy().astype(np.float32).tolist()
         class_ids = results.boxes.cls.cpu().numpy().astype(np.uint8).tolist()
@@ -98,19 +88,18 @@ class SegAndTrack:
             scaled_masks = scale_image((mask_height, mask_width), masks, (h, w))
             scaled_masks = scaled_masks.transpose(2, 0, 1)
 
-        # Mask reconstruction
-        rois = get_masks_rois(scaled_masks)
-        masks_in_rois = get_masks_in_rois(scaled_masks, rois)
+        return conf, class_ids, boxes, scaled_masks
 
+    def detect_aruco(self, img: np.ndarray, 
+                     masks_in_rois: np.ndarray, rois: np.ndarray) -> tuple[list[int], list[dict], list[np.ndarray]]:
         marker_ids = []
         marker_poses = []
         marker_corners = []
         count_num = 0
-        marker_length = 0.08  # Length of the Aruco marker side
         corners_all, ids_all, _ = aruco.detectMarkers(img, self.aruco_dict)
         # Estimating aruco translation and rotation vectors
         rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
-            corners_all, marker_length, self.camera_matrix, self.dist_coeffs
+            corners_all, self.marker_length, self.camera_matrix, self.dist_coeffs
         )
         # Searching for aruco markers in ROI
         for i, roi in enumerate(rois):
@@ -138,7 +127,7 @@ class SegAndTrack:
 
                     # Estimating aruco translation and rotation vectors
                     rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
-                        corners_with_offset, marker_length, self.camera_matrix, self.dist_coeffs
+                        corners_with_offset, self.marker_length, self.camera_matrix, self.dist_coeffs
                     )
                     # 6 degrees of freedom
                     pose_6dof = {"rvec": rvecs[0].tolist(), "tvec": tvecs[0].tolist()}
@@ -169,6 +158,25 @@ class SegAndTrack:
                 marker_corners.append(None)
                 count_num += 1
 
+        return marker_ids, marker_poses, marker_corners
+    
+    def segment_image(self, image_path: str) -> SegAndTrackResponse:
+        img = cv2.imread(image_path)
+        h, w = img.shape[:2]
+        new_matr = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
+            self.camera_matrix, self.dist_fish, (w, h), None
+        )
+        img = cv2.fisheye.undistortImage(img, K=self.camera_matrix, D=self.dist_fish, Knew=new_matr)
+        # Getting depth map of an image before any processing
+        depth_map = self.depth_evaluator.get_depth_map(
+            img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs
+        )
+        # Getting segmentation
+        conf, class_ids, boxes, scaled_masks = self.segment_image_(img, h, w)
+        # Detecting aruco markers
+        rois = get_masks_rois(scaled_masks)
+        masks_in_rois = get_masks_in_rois(scaled_masks, rois)
+        marker_ids, marker_poses, marker_corners = self.detect_aruco(img, masks_in_rois, rois)
         # Handling duplicates in marker ids
         unique_ids = set(marker_ids)
         for marker_id in unique_ids:
@@ -226,7 +234,7 @@ class SegAndTrack:
         corners_shelf, ids_shelfs, _ = aruco.detectMarkers(img, self.aruco_dict, parameters=self.aruco_params)
         if ids_shelfs is not None:
             rvecs_shelf, tvecs_shelf, _ = cv2.aruco.estimatePoseSingleMarkers(
-                corners_shelf, marker_length, self.camera_matrix, self.dist_coeffs
+                corners_shelf, self.marker_length, self.camera_matrix, self.dist_coeffs
             )
             for i in range(len(ids_shelfs)):
                 marker_id = ids_shelfs[i][0]
@@ -422,15 +430,15 @@ class SegAndTrack:
         print(response.json())
 
         task_id = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S_") + str(uuid.uuid4())
-        save_output(
-            task_id,
-            image_path,
-            response,
-            img_with_masks,
-            base_dir=datetime.datetime.now().strftime("%Y-%m-%d"),
-        )
+        # save_output(
+        #     task_id,
+        #     image_path,
+        #     response,
+        #     img_with_masks,
+        #     base_dir=datetime.datetime.now().strftime("%Y-%m-%d"),
+        # )
         task_id = "latest"
-        save_output(task_id, image_path, response, img_with_masks)
+        # save_output(task_id, image_path, response, img_with_masks)
         # path = '/home/sashadance/python_projects/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/output_images'
         # save_json(response.dict(), pathlib.Path(path + f"/{image_path.split('/')[-1].split('.')[0]}.json"))
         # cv2.imwrite(path + f"/{image_path.split('/')[-1]}", img_with_masks)

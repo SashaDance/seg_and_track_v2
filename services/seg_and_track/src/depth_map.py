@@ -155,6 +155,3 @@ class PlaneDetector:
         height = points_3d[:, 1].max() - points_3d[:, 1].min()
 
         return width, height
-
-
-# TODO: проверить, что формирование point cloud праваильное на aruco маркерах
