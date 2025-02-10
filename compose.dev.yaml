@@ -1,0 +1,91 @@
+services:
+
+  assistant:
+    volumes:
+      - ./services/assistant:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  intent_catcher:
+    volumes:
+      - ./services/intent_catcher:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  llm_llama3:
+    volumes:
+      - ./services/llm_llama3:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  llm_vicuna13b:
+    volumes:
+      - ./services/llm_vicuna13b:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  planner:
+    volumes:
+      - ./services/planner:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  machine_translation:
+    volumes:
+      - ./services/machine_translation:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  gigachat:
+    volumes:
+      - ./services/gigachat:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  ingress:
+    volumes:
+      - ./services/ingress:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  seg_and_track:
+    volumes:
+      - ./services/seg_and_track:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+
+  file_browser:
+    volumes:
+      - ./services/file_browser:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  file_uploader:
+    volumes:
+      - ./services/file_uploader:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  auto_sat:
+    volumes:
+      - ./services/auto_sat:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+
+  ssml_tagger:
+    volumes:
+      - ./services/ssml_tagger:/app
+    environment:
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1

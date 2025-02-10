@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "voice-assistant-extensions"
+version = "0.1.0"
+description = ""
+authors = [
+    "Denis Kuznetsov <kuznetsov.den.p@gmail.com>",
+    "Atrem Strekalov <strekalov@nanosematics.ai>",
+]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiohttp = "^3.10.10"
+fastapi = "*"
+pydantic = "^2.9.2"
+websockets = "^13.1"
+loguru = "^0.7.2"
+sentry-sdk = "^2.16.0"
+opentelemetry-api = "^1.27.0"
+opentelemetry-sdk = "^1.27.0"
+opentelemetry-exporter-jaeger = "^1.21.0"
+python-logstash-async = "^3.0.0"
+opentelemetry-instrumentation-fastapi = "^0.48b0"
+opentelemetry-propagator-b3 = "^1.27.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

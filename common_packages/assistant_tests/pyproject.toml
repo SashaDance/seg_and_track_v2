@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "assistant_tests"
+version = "0.1.0"
+description = ""
+authors = ["Denis Kuznetsov <kunetsov.den.p@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = ">=2,<3"
+services-api = { path = "/common_packages/services_api", develop = true }
+chatsky = { version = "0.8", extras = ["postgresql", "telegram"] }
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
