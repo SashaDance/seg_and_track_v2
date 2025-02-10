@@ -1,11 +1,13 @@
 {
-    "count_box_and_containers": 3,
+    "count_box_and_containers": 4,
     "scores": [
-        0.95,
-        0.791,
-        0.686
+        0.939,
+        0.807,
+        0.719,
+        0.263
     ],
     "classes_ids": [
+        1,
         1,
         1,
         1
@@ -13,29 +15,52 @@
     "tracking_ids": [
         1,
         4,
-        5
+        5,
+        6
     ],
     "boxes": [
         {
-            "x_min": 954,
-            "y_min": 614,
-            "x_max": 1160,
-            "y_max": 813
+            "x_min": 986,
+            "y_min": 616,
+            "x_max": 1196,
+            "y_max": 841
         },
         {
-            "x_min": 911,
-            "y_min": 618,
-            "x_max": 946,
-            "y_max": 713
+            "x_min": 947,
+            "y_min": 624,
+            "x_max": 986,
+            "y_max": 738
         },
         {
-            "x_min": 1392,
-            "y_min": 687,
+            "x_min": 1394,
+            "y_min": 685,
             "x_max": 1439,
-            "y_max": 866
+            "y_max": 848
+        },
+        {
+            "x_min": 1205,
+            "y_min": 691,
+            "x_max": 1230,
+            "y_max": 756
         }
     ],
     "poses": [
+        {
+            "rvec": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ],
+            "tvec": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ]
+        },
         {
             "rvec": [
                 [
@@ -102,27 +127,31 @@
         {
             "box_id": 0,
             "placed_on_shelf_with_id": -1
+        },
+        {
+            "box_id": 0,
+            "placed_on_shelf_with_id": -1
         }
     ],
     "shelves": [
         {
             "shelf_id": 5,
             "x": 0.042,
-            "y": 0.076,
+            "y": 0.075,
             "occupied_by_box_with_id": -1,
             "pose": {
                 "rvec": [
                     [
-                        -2.822,
-                        0.003,
-                        -0.014
+                        -2.815,
+                        0.011,
+                        -0.043
                     ]
                 ],
                 "tvec": [
                     [
                         0.042,
-                        0.076,
-                        0.363
+                        0.075,
+                        0.293
                     ]
                 ]
             }
