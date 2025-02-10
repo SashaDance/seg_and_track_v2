@@ -13,12 +13,13 @@ from huggingface_hub import hf_hub_download
 from ultralytics import YOLO
 import cv2.aruco as aruco
 
-from services_api.seg_and_track import SegAndTrackResponse, Box, Pose, Graph
+from seg_and_track_api import SegAndTrackResponse, Box, Pose, Graph
+from data import test_cases
 
-from .masks import get_masks_in_rois, get_masks_rois, scale_image, reconstruct_masks
-from .visualization import draw_objects
-from .conversions import to_mask_msg
-from .depth_map import DepthEvaluator, PlaneDetector
+from masks import get_masks_in_rois, get_masks_rois, scale_image, reconstruct_masks
+from visualization import draw_objects
+from conversions import to_mask_msg
+from depth_map import DepthEvaluator, PlaneDetector
 
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -91,7 +92,9 @@ class SegAndTrack:
         return conf, class_ids, boxes, scaled_masks
 
     def detect_aruco(self, img: np.ndarray, 
-                     masks_in_rois: np.ndarray, rois: np.ndarray) -> tuple[list[int], list[dict], list[np.ndarray]]:
+                     masks_in_rois: np.ndarray, 
+                     rois: np.ndarray
+                    ) -> tuple[list[int], list[dict], list[np.ndarray], list[int], list[dict], list[np.ndarray]]:
         marker_ids = []
         marker_poses = []
         marker_corners = []
@@ -157,77 +160,7 @@ class SegAndTrack:
                 marker_poses.append(pose_6dof)
                 marker_corners.append(None)
                 count_num += 1
-
-        return marker_ids, marker_poses, marker_corners
-    
-    def segment_image(self, image_path: str) -> SegAndTrackResponse:
-        img = cv2.imread(image_path)
-        h, w = img.shape[:2]
-        new_matr = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
-            self.camera_matrix, self.dist_fish, (w, h), None
-        )
-        img = cv2.fisheye.undistortImage(img, K=self.camera_matrix, D=self.dist_fish, Knew=new_matr)
-        # Getting depth map of an image before any processing
-        depth_map = self.depth_evaluator.get_depth_map(
-            img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs
-        )
-        # Getting segmentation
-        conf, class_ids, boxes, scaled_masks = self.segment_image_(img, h, w)
-        # Detecting aruco markers
-        rois = get_masks_rois(scaled_masks)
-        masks_in_rois = get_masks_in_rois(scaled_masks, rois)
-        marker_ids, marker_poses, marker_corners = self.detect_aruco(img, masks_in_rois, rois)
-        # Handling duplicates in marker ids
-        unique_ids = set(marker_ids)
-        for marker_id in unique_ids:
-            indices = [i for i, id_ in enumerate(marker_ids) if id_ == marker_id]
-            if len(indices) > 1:
-                # Leaving only one aruco marker with the biggest area
-                areas = [
-                    cv2.contourArea(cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0])
-                    for i, mask in enumerate(masks_in_rois)
-                    if i in indices
-                ]
-                max_area_index = indices[np.argmax(areas)]
-                for i in indices:
-                    if i != max_area_index:
-                        marker_ids.pop(i)
-                        conf.pop(i)
-                        class_ids.pop(i)
-                        boxes.pop(i)
-                        np.delete(masks_in_rois, i, axis=0)
-                        np.delete(rois, i, axis=0)
-
-        mask_messages = [to_mask_msg(mask_in_roi, roi, w, h) for mask_in_roi, roi in zip(masks_in_rois, rois)]
-        masks_in_rois = reconstruct_masks(mask_messages)
-        # Getting only boxes and containers
-        filtered_indices = [i for i, class_id in enumerate(class_ids) if class_id in [0, 1]]
-        shelves_indices = [i for i, class_id in enumerate(class_ids) if class_id == 3]
-        filtered_marker_ids = [marker_ids[i] for i in filtered_indices if i < len(marker_ids)]
-        filtered_marker_poses = [marker_poses[i] for i in filtered_indices if i < len(marker_poses)]
-        filtered_boxes = [boxes[i] for i in filtered_indices if i < len(boxes)]
-        filtered_conf = [conf[i] for i in filtered_indices if i < len(conf)]
-        filtered_marker_corners = [marker_corners[i] for i in filtered_indices if i < len(marker_corners)]
-        filtered_class_ids = [class_ids[i] for i in filtered_indices if i < len(class_ids)]
-        filtered_masks_in_rois = [masks_in_rois[i] for i in filtered_indices if i < len(masks_in_rois)]
-        # Shelves YOLO boxes
-        shelf_masks = [masks_in_rois[i] for i in shelves_indices]
-
-        # Checking whether box is on the floor
-        filtered_flags = []
-        for box_mask in filtered_masks_in_rois:
-            on_shelf = False
-            for shelf_mask in shelf_masks:
-                if np.multiply(box_mask, shelf_mask).sum() > 0:
-                    on_shelf = True
-                    break
-            if not on_shelf:
-                filtered_flags.append(True)
-            else:
-                filtered_flags.append(False)
-
-        # Associating boxes/containers with the shelves
-        # Searching for the aruco markers on shelves
+        # Aruco markers on shelves
         shelf_ids = []
         shelf_corners = []
         shelves = []
@@ -269,9 +202,73 @@ class SegAndTrack:
                         shelf_ids.append(shelf_id)
                         shelf_corners.append(corners_shelf[i])
 
+
+        return marker_ids, marker_poses, marker_corners, shelf_ids, shelves, shelf_corners
+    
+    def recognize_obstacles(self, boxes_masks: list[np.ndarray], 
+                            shelf_masks: list[np.ndarray],
+                            class_ids: list[int]) -> tuple[list[bool], bool]:
+        # Checking whether box is on the floor
+        filtered_flags = []
+        for box_mask in boxes_masks:
+            on_shelf = False
+            for shelf_mask in shelf_masks:
+                if np.multiply(box_mask, shelf_mask).sum() > 0:
+                    on_shelf = True
+                    break
+            if not on_shelf:
+                filtered_flags.append(True)
+            else:
+                filtered_flags.append(False)
+            
+        return filtered_flags, 2 in class_ids
+
+    def check_box_sizes(self, depth_map: np.ndarray, poses: list[dict],
+                        marker_ids: list[int], masks: list[np.ndarray]) -> bool:
+        right_size_flags = True
+        point_cloud = self.plane_detector.get_point_cloud(depth_map)
+        # Calculating mean distance to boxes to know current way point
+        mean_z = 0
+        for pose in poses:
+            z = pose["tvec"][0][-1]
+            mean_z += z
+        if len(poses) == 0:
+            mean_z = 0
+        else:
+            mean_z /= len(poses)
+        if mean_z >= 0.6:
+            threshold = 0.05
+        else:
+            threshold = 0.03
+        for marker_id, mask_box in zip(marker_ids, masks):
+            # Check if aruco id is in reference
+            if marker_id in self.aruco_size_reference:
+                ref_width, ref_height = self.aruco_size_reference[marker_id]
+                detected_width, detected_height = self.plane_detector.get_plane_size(
+                    point_cloud, mask_box, threshold=threshold, img=None
+                )
+                tolerance = 0.3
+                is_correct_size = (1 - tolerance) * ref_width <= detected_width <= (1 + tolerance) * ref_width and (
+                    1 - tolerance
+                ) * ref_height <= detected_height <= (1 + tolerance) * ref_height
+                print(detected_width, ref_width, detected_height, ref_height)
+                errors.append(min(detected_height / ref_height, ref_height / detected_height))
+                errors.append(min(detected_width / ref_width, ref_width / detected_width))
+                if not is_correct_size:
+                    # If at least one size is incorrect the flag is False
+                    right_size_flags = False
+
+        return right_size_flags if len(marker_ids) != 0 else False
+
+    def fuse_mask_aruco(self, marker_corners: list[np.ndarray],
+                        boxes: list[list[int]],
+                        class_ids: list[int],
+                        marker_ids: list[int],
+                        filtered_flags: list[bool], shelf_corners: list[np.ndarray],
+                        shelf_ids: list[int], shelves: list[dict]) -> tuple[list[dict], list[dict], bool, Graph]:
         # For each box/container associate the closest shelf
         boxes_output = []
-        for cur_ind, box_corner in enumerate(filtered_marker_corners):
+        for cur_ind, box_corner in enumerate(marker_corners):
             if box_corner is None or filtered_flags[cur_ind]:
                 boxes_output.append({"box_id": 0, "placed_on_shelf_with_id": -1})
                 continue
@@ -294,62 +291,27 @@ class SegAndTrack:
                     min_ind = ind
 
             if min_ind == -1:
-                boxes_output.append({"box_id": filtered_marker_ids[cur_ind], "placed_on_shelf_with_id": -1})
+                boxes_output.append({"box_id": marker_ids[cur_ind], "placed_on_shelf_with_id": -1})
             else:
                 boxes_output.append(
-                    {"box_id": filtered_marker_ids[cur_ind], "placed_on_shelf_with_id": shelf_ids[min_ind]}
+                    {"box_id": marker_ids[cur_ind], "placed_on_shelf_with_id": shelf_ids[min_ind]}
                 )
             if 0 <= min_ind < len(shelves):  # Ensure min_ind is within valid bounds
-                shelves[min_ind]["occupied_by_box_with_id"] = filtered_marker_ids[cur_ind]
-
-        right_size_flags = True
-        point_cloud = self.plane_detector.get_point_cloud(depth_map)
-        # Calculating mean distance to boxes to know current way point
-        mean_z = 0
-        for pose in filtered_marker_poses:
-            z = pose["tvec"][0][-1]
-            mean_z += z
-        if len(filtered_marker_poses) == 0:
-            mean_z = 0
-        else:
-            mean_z /= len(filtered_marker_poses)
-        if mean_z >= 0.6:
-            threshold = 0.05
-        else:
-            threshold = 0.03
-        for marker_id, mask_box in zip(filtered_marker_ids, filtered_masks_in_rois):
-            # Check if aruco id is in reference
-            if marker_id in self.aruco_size_reference:
-                ref_width, ref_height = self.aruco_size_reference[marker_id]
-                detected_width, detected_height = self.plane_detector.get_plane_size(
-                    point_cloud, mask_box, threshold=threshold, img=None
-                )
-                tolerance = 0.3
-                is_correct_size = (1 - tolerance) * ref_width <= detected_width <= (1 + tolerance) * ref_width and (
-                    1 - tolerance
-                ) * ref_height <= detected_height <= (1 + tolerance) * ref_height
-                print(detected_width, ref_width, detected_height, ref_height)
-                errors.append(min(detected_height / ref_height, ref_height / detected_height))
-                errors.append(min(detected_width / ref_width, ref_width / detected_width))
-                if not is_correct_size:
-                    # If at least one size is incorrect the flag is False
-                    right_size_flags = False
-        right_size_flags = right_size_flags if len(filtered_marker_ids) != 0 else False
-        relationships: List[Graph] = []
+                shelves[min_ind]["occupied_by_box_with_id"] = marker_ids[cur_ind]
 
         # Looking for boxes on another boxes
         box_on_box = False
         message = None
 
-        for i, current_box in enumerate(filtered_boxes):
-            if filtered_class_ids[i] == 0:  # only fo boxes
+        for i, current_box in enumerate(boxes):
+            if class_ids[i] == 0:  # only fo boxes
                 x_min, y_min, x_max, y_max = current_box
                 # The area above box
                 top_region_y_max = y_min - 10
 
-                for j, other_box in enumerate(filtered_boxes):
+                for j, other_box in enumerate(boxes):
                     # Looking for the second box
-                    if i != j and filtered_class_ids[j] == 0:
+                    if i != j and class_ids[j] == 0:
                         other_x_min, other_y_min, other_x_max, other_y_max = other_box
                         # Checking if one box is on the another
                         if (
@@ -360,18 +322,84 @@ class SegAndTrack:
                         ):
                             box_on_box = True
                             message = Graph(
-                                id_1=filtered_marker_ids[i],  # id of the first box
-                                id_2=filtered_marker_ids[j],  # id of the second box
+                                id_1=marker_ids[i],  # id of the first box
+                                id_2=marker_ids[j],  # id of the second box
                                 rel_id=2,
                                 class_name_1="box",
                                 rel_name="on_top",
                                 class_name_2="box",
                             )
-                            relationships.append(message)
                             break
                 if box_on_box:
                     break
 
+        return shelves, boxes_output, box_on_box, message
+
+    def segment_image(self, image_path: str) -> SegAndTrackResponse:
+        img = cv2.imread(image_path)
+        h, w = img.shape[:2]
+        new_matr = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
+            self.camera_matrix, self.dist_fish, (w, h), None
+        )
+        img = cv2.fisheye.undistortImage(img, K=self.camera_matrix, D=self.dist_fish, Knew=new_matr)
+        # Getting depth map of an image before any processing
+        depth_map = self.depth_evaluator.get_depth_map(
+            img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs
+        )
+        # Getting segmentation
+        conf, class_ids, boxes, scaled_masks = self.segment_image_(img, h, w)
+        # Detecting aruco markers
+        rois = get_masks_rois(scaled_masks)
+        masks_in_rois = get_masks_in_rois(scaled_masks, rois)
+        marker_ids, marker_poses, marker_corners, shelf_ids, shelves, shelf_corners = self.detect_aruco(img, masks_in_rois, rois)
+        # Handling duplicates in marker ids
+        unique_ids = set(marker_ids)
+        for marker_id in unique_ids:
+            indices = [i for i, id_ in enumerate(marker_ids) if id_ == marker_id]
+            if len(indices) > 1:
+                # Leaving only one aruco marker with the biggest area
+                areas = [
+                    cv2.contourArea(cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0][0])
+                    for i, mask in enumerate(masks_in_rois)
+                    if i in indices
+                ]
+                max_area_index = indices[np.argmax(areas)]
+                for i in indices:
+                    if i != max_area_index:
+                        marker_ids.pop(i)
+                        conf.pop(i)
+                        class_ids.pop(i)
+                        boxes.pop(i)
+                        np.delete(masks_in_rois, i, axis=0)
+                        np.delete(rois, i, axis=0)
+
+        mask_messages = [to_mask_msg(mask_in_roi, roi, w, h) for mask_in_roi, roi in zip(masks_in_rois, rois)]
+        masks_in_rois = reconstruct_masks(mask_messages)
+        # Getting only boxes and containers
+        filtered_indices = [i for i, class_id in enumerate(class_ids) if class_id in [0, 1]]
+        shelves_indices = [i for i, class_id in enumerate(class_ids) if class_id == 3]
+        filtered_marker_ids = [marker_ids[i] for i in filtered_indices if i < len(marker_ids)]
+        filtered_marker_poses = [marker_poses[i] for i in filtered_indices if i < len(marker_poses)]
+        filtered_boxes = [boxes[i] for i in filtered_indices if i < len(boxes)]
+        filtered_conf = [conf[i] for i in filtered_indices if i < len(conf)]
+        filtered_marker_corners = [marker_corners[i] for i in filtered_indices if i < len(marker_corners)]
+        filtered_class_ids = [class_ids[i] for i in filtered_indices if i < len(class_ids)]
+        filtered_masks_in_rois = [masks_in_rois[i] for i in filtered_indices if i < len(masks_in_rois)]
+
+        # Obstalce recognition
+        shelf_masks = [masks_in_rois[i] for i in shelves_indices]
+        filtered_flags, man_in_frame = self.recognize_obstacles(filtered_masks_in_rois, shelf_masks, class_ids)
+        
+        # Checking sizes of boxes and containers
+        right_size_flags = self.check_box_sizes(depth_map, filtered_marker_poses, filtered_marker_ids, filtered_masks_in_rois)
+        
+        # Associating boxes/containers with the shelves
+        shelves, boxes_output, box_on_box, message = self.fuse_mask_aruco(
+            filtered_marker_corners, filtered_boxes, 
+            filtered_class_ids, filtered_marker_ids, 
+            filtered_flags, shelf_corners, 
+            shelf_ids, shelves
+        )
         # Visualization of the results
         img_with_masks = draw_objects(
             img,
@@ -386,9 +414,6 @@ class SegAndTrack:
             palette=self.colors_palette,
             color_by_object_id=True,
         )
-
-        # Checking whether man is in the frame
-        man_in_frame = 2 in class_ids
 
         # Box or container in the frame
         box_or_container_in_frame = any(cls_id in [0, 1] for cls_id in class_ids)
@@ -428,6 +453,8 @@ class SegAndTrack:
             graph_box_on_box=message,
         )
         print(response.json())
+        print(test_cases['test_case_' + image_path.split('/')[-1].split('.')[0]].response.json())
+        assert response.json() == test_cases['test_case_' + image_path.split('/')[-1].split('.')[0]].response.json()
 
         task_id = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S_") + str(uuid.uuid4())
         # save_output(

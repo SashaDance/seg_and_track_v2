@@ -1,4 +1,4 @@
-from services_api.seg_and_track import Roi, Mask
+from seg_and_track_api import Roi, Mask
 
 
 def to_roi_msg(roi):
