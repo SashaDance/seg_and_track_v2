@@ -1,6 +1,6 @@
 import pytest
 from services_api import seg_and_track
-from services.seg_and_track.tests.data import test_cases
+from .tests.data import test_cases
 
 
 @pytest.mark.parametrize("test_case", test_cases.values(), ids=test_cases.keys())
