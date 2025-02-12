@@ -338,10 +338,10 @@ class SegAndTrack:
     def segment_image(self, image_path: str) -> SegAndTrackResponse:
         img = cv2.imread(image_path)
         h, w = img.shape[:2]
-        new_matr = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
-            self.camera_matrix, self.dist_fish, (w, h), None
-        )
-        img = cv2.fisheye.undistortImage(img, K=self.camera_matrix, D=self.dist_fish, Knew=new_matr)
+        # new_matr = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
+        #     self.camera_matrix, self.dist_fish, (w, h), None
+        # )
+        # img = cv2.fisheye.undistortImage(img, K=self.camera_matrix, D=self.dist_fish, Knew=new_matr)
         # Getting depth map of an image before any processing
         depth_map = self.depth_evaluator.get_depth_map(
             img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs
