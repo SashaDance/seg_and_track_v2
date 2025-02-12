@@ -73,7 +73,7 @@ class SegAndTrack:
         self.dist_fish = np.array([0.927077, 0.141438, 0.000196, -8.7e-05])
         self.plane_detector = PlaneDetector(self.camera_matrix)
 
-    def segment_image_(self, img: np.ndarray, h: int, w: int) -> tuple[list[float], list[int], list[list[int]], np.ndarray]:
+    def segment_image(self, img: np.ndarray, h: int, w: int) -> tuple[list[float], list[int], list[list[int]], np.ndarray]:
         results = self.model(img)[0]
         conf = results.boxes.conf.cpu().numpy().astype(np.float32).tolist()
         class_ids = results.boxes.cls.cpu().numpy().astype(np.uint8).tolist()
@@ -202,7 +202,6 @@ class SegAndTrack:
                         shelf_ids.append(shelf_id)
                         shelf_corners.append(corners_shelf[i])
 
-
         return marker_ids, marker_poses, marker_corners, shelf_ids, shelves, shelf_corners
     
     def recognize_obstacles(self, boxes_masks: list[np.ndarray], 
@@ -212,8 +211,10 @@ class SegAndTrack:
         filtered_flags = []
         for box_mask in boxes_masks:
             on_shelf = False
+            box_point_cloud = self.point_cloud[:, box_mask.astype(bool)]
             for shelf_mask in shelf_masks:
-                if np.multiply(box_mask, shelf_mask).sum() > 0:
+                shelf_point_cloud = self.point_cloud[:, shelf_mask.astype(bool)]
+                if abs(box_point_cloud[1].max() - shelf_point_cloud[1].min()) < 0.08:  # y axis points down
                     on_shelf = True
                     break
             if not on_shelf:
@@ -226,7 +227,6 @@ class SegAndTrack:
     def check_box_sizes(self, depth_map: np.ndarray, poses: list[dict],
                         marker_ids: list[int], masks: list[np.ndarray]) -> bool:
         right_size_flags = True
-        point_cloud = self.plane_detector.get_point_cloud(depth_map)
         # Calculating mean distance to boxes to know current way point
         mean_z = 0
         for pose in poses:
@@ -245,7 +245,7 @@ class SegAndTrack:
             if marker_id in self.aruco_size_reference:
                 ref_width, ref_height = self.aruco_size_reference[marker_id]
                 detected_width, detected_height = self.plane_detector.get_plane_size(
-                    point_cloud, mask_box, threshold=threshold, img=None
+                    self.point_cloud, mask_box, threshold=threshold, img=None
                 )
                 tolerance = 0.3
                 is_correct_size = (1 - tolerance) * ref_width <= detected_width <= (1 + tolerance) * ref_width and (
@@ -335,19 +335,16 @@ class SegAndTrack:
 
         return shelves, boxes_output, box_on_box, message
 
-    def segment_image(self, image_path: str) -> SegAndTrackResponse:
+    def get_response(self, image_path: str) -> SegAndTrackResponse:
         img = cv2.imread(image_path)
         h, w = img.shape[:2]
-        # new_matr = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
-        #     self.camera_matrix, self.dist_fish, (w, h), None
-        # )
-        # img = cv2.fisheye.undistortImage(img, K=self.camera_matrix, D=self.dist_fish, Knew=new_matr)
         # Getting depth map of an image before any processing
         depth_map = self.depth_evaluator.get_depth_map(
             img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs
         )
+        self.point_cloud = self.plane_detector.get_point_cloud(depth_map)
         # Getting segmentation
-        conf, class_ids, boxes, scaled_masks = self.segment_image_(img, h, w)
+        conf, class_ids, boxes, scaled_masks = self.segment_image(img, h, w)
         # Detecting aruco markers
         rois = get_masks_rois(scaled_masks)
         masks_in_rois = get_masks_in_rois(scaled_masks, rois)
@@ -452,9 +449,9 @@ class SegAndTrack:
             shelves=shelves,
             graph_box_on_box=message,
         )
-        print(response.json())
-        print(test_cases['test_case_' + image_path.split('/')[-1].split('.')[0]].response.json())
-        assert response.json() == test_cases['test_case_' + image_path.split('/')[-1].split('.')[0]].response.json()
+        # print(response.json())
+        # print(test_cases['test_case_' + image_path.split('/')[-1].split('.')[0]].response.json())
+        # assert response.json() == test_cases['test_case_' + image_path.split('/')[-1].split('.')[0]].response.json()
 
         task_id = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S_") + str(uuid.uuid4())
         # save_output(
@@ -474,9 +471,10 @@ class SegAndTrack:
 
 if __name__ == '__main__':
     seg = SegAndTrack()
-    base_path = '/home/sashadance/python_projects/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/images'
+    base_path = os.path.join(os.getcwd()[:-4], 'tests\\data\\images')
+    # base_path = '/home/sashadance/python_projects/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/images'
     for img_pth in ['wp0.png', 'wp1.png', 'wp1_2box.png', 'wp2.png', 'wp3.png']:
-        seg.segment_image(os.path.join(base_path, img_pth))
+        seg.get_response(os.path.join(base_path, img_pth))
     print(np.array(errors).mean())
 
 

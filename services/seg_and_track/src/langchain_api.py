@@ -22,7 +22,7 @@ class SegAndTrackAPI(LLM):
             try:
                 segmentor_request = SegAndTrackRequest.parse_raw(prompt)
 
-                response = self.model.segment_image(segmentor_request.image_path)
+                response = self.model.get_response(segmentor_request.image_path)
 
                 CACHE[prompt] = response.json()
             except Exception as e:

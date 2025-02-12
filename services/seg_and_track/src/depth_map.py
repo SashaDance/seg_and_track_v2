@@ -13,10 +13,10 @@ from sklearn.linear_model import RANSACRegressor, LinearRegression
 class DepthEvaluator:
     def __init__(self, device: str):
         model_path_hg = hf_hub_download(
-            repo_id="depth-anything/Depth-Anything-V2-Metric-Hypersim-Large",
-            filename="depth_anything_v2_metric_hypersim_vitl.pth",
+            repo_id="depth-anything/Depth-Anything-V2-Metric-Hypersim-Base",
+            filename="depth_anything_v2_metric_hypersim_vitb.pth",
         )
-        params = {"encoder": "vitl", "features": 256, "out_channels": [256, 512, 1024, 1024]}
+        params = {'encoder': 'vitb', 'features': 128, 'out_channels': [96, 192, 384, 768]}
         self.model = DepthAnythingV2(**params, max_depth=20.0)
         self.model.load_state_dict(torch.load(model_path_hg))
         self.model.to(device)
