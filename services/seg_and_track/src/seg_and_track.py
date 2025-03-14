@@ -50,7 +50,7 @@ def save_output(task_id, image_path, response, img, base_dir=None):
 
 class SegAndTrack:
     def __init__(self):
-        model_path = hf_hub_download(repo_id="AnzhelikaK/yolo-v-11-new", filename="best.pt")
+        model_path = hf_hub_download(repo_id="sashaaadaaance/yolo11-s", filename="best.pt")
         self.model = YOLO(model_path)
         self.model.to(DEVICE)
         self.depth_evaluator = DepthEvaluator(device=DEVICE)
@@ -463,9 +463,9 @@ class SegAndTrack:
         # )
         task_id = "latest"
         # save_output(task_id, image_path, response, img_with_masks)
-        # path = '/home/sashadance/python_projects/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/output_images'
-        # save_json(response.dict(), pathlib.Path(path + f"/{image_path.split('/')[-1].split('.')[0]}.json"))
-        # cv2.imwrite(path + f"/{image_path.split('/')[-1]}", img_with_masks)
+        path = '/home/sashadance/python_projects/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/output_images'
+        save_json(response.dict(), pathlib.Path(path + f"/{image_path.split('/')[-1].split('.')[0]}.json"))
+        cv2.imwrite(path + f"/{image_path.split('/')[-1]}", img_with_masks)
 
         return response
 
@@ -473,7 +473,7 @@ if __name__ == '__main__':
     seg = SegAndTrack()
     base_path = os.path.join(os.getcwd()[:-4], 'tests\\data\\images')
     # base_path = '/home/sashadance/python_projects/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/images'
-    for img_pth in ['wp0.png', 'wp1.png', 'wp1_2box.png', 'wp2.png', 'wp3.png']:
+    for img_pth in os.listdir(base_path):
         seg.get_response(os.path.join(base_path, img_pth))
     print(np.array(errors).mean())
 
