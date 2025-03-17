@@ -50,7 +50,11 @@ def save_output(task_id, image_path, response, img, base_dir=None):
 
 class SegAndTrack:
     def __init__(self):
-        model_path = hf_hub_download(repo_id="AnzhelikaK/yolo-v-11-new", filename="best.pt")
+        model_path = hf_hub_download(repo_id="sashaaadaaance/yolo11-s", filename="best.pt")
+        self.person_class_id = 0
+        self.container_class_id = 1
+        self.box_class_id = 2
+        self.shelf_class_id = 3
         self.model = YOLO(model_path)
         self.model.to(DEVICE)
         self.depth_evaluator = DepthEvaluator(device=DEVICE)
@@ -222,7 +226,7 @@ class SegAndTrack:
             else:
                 filtered_flags.append(False)
             
-        return filtered_flags, 2 in class_ids
+        return filtered_flags, self.person_class_id in class_ids
 
     def check_box_sizes(self, depth_map: np.ndarray, poses: list[dict],
                         marker_ids: list[int], masks: list[np.ndarray]) -> bool:
@@ -304,14 +308,14 @@ class SegAndTrack:
         message = None
 
         for i, current_box in enumerate(boxes):
-            if class_ids[i] == 0:  # only fo boxes
+            if class_ids[i] == self.box_class_id:  # only fo boxes
                 x_min, y_min, x_max, y_max = current_box
                 # The area above box
                 top_region_y_max = y_min - 10
 
                 for j, other_box in enumerate(boxes):
                     # Looking for the second box
-                    if i != j and class_ids[j] == 0:
+                    if i != j and class_ids[j] == self.box_class_id:
                         other_x_min, other_y_min, other_x_max, other_y_max = other_box
                         # Checking if one box is on the another
                         if (
@@ -373,8 +377,8 @@ class SegAndTrack:
         mask_messages = [to_mask_msg(mask_in_roi, roi, w, h) for mask_in_roi, roi in zip(masks_in_rois, rois)]
         masks_in_rois = reconstruct_masks(mask_messages)
         # Getting only boxes and containers
-        filtered_indices = [i for i, class_id in enumerate(class_ids) if class_id in [0, 1]]
-        shelves_indices = [i for i, class_id in enumerate(class_ids) if class_id == 3]
+        filtered_indices = [i for i, class_id in enumerate(class_ids) if class_id in [self.box_class_id, self.container_class_id]]
+        shelves_indices = [i for i, class_id in enumerate(class_ids) if class_id == self.shelf_class_id]
         filtered_marker_ids = [marker_ids[i] for i in filtered_indices if i < len(marker_ids)]
         filtered_marker_poses = [marker_poses[i] for i in filtered_indices if i < len(marker_poses)]
         filtered_boxes = [boxes[i] for i in filtered_indices if i < len(boxes)]
@@ -413,7 +417,7 @@ class SegAndTrack:
         )
 
         # Box or container in the frame
-        box_or_container_in_frame = any(cls_id in [0, 1] for cls_id in class_ids)
+        box_or_container_in_frame = any(cls_id in [self.box_class_id, self.container_class_id] for cls_id in class_ids)
         # Constructing response
         boxes_response = [
             Box(x_min=int(box[0]), y_min=int(box[1]), x_max=int(box[2]), y_max=int(box[3])) for box in filtered_boxes
@@ -463,17 +467,18 @@ class SegAndTrack:
         # )
         task_id = "latest"
         # save_output(task_id, image_path, response, img_with_masks)
-        # path = '/home/sashadance/python_projects/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/output_images'
-        # save_json(response.dict(), pathlib.Path(path + f"/{image_path.split('/')[-1].split('.')[0]}.json"))
-        # cv2.imwrite(path + f"/{image_path.split('/')[-1]}", img_with_masks)
+        path = '/home/sashadance/python_projects/proj_android/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/output_images'
+        save_json(response.dict(), pathlib.Path(path + f"/{image_path.split('/')[-1].split('.')[0]}.json"))
+        cv2.imwrite(path + f"/{image_path.split('/')[-1]}", img_with_masks)
 
         return response
 
 if __name__ == '__main__':
     seg = SegAndTrack()
-    base_path = os.path.join(os.getcwd()[:-4], 'tests\\data\\images')
-    # base_path = '/home/sashadance/python_projects/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/images'
-    for img_pth in ['wp0.png', 'wp1.png', 'wp1_2box.png', 'wp2.png', 'wp3.png']:
+    # base_path = os.path.join(os.getcwd()[:-4], 'tests\\data\\images')
+    base_path = '/home/sashadance/python_projects/proj_android/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/images'
+    # for img_pth in ['wp0.png', 'wp1.png', 'wp1_2box.png', 'wp2.png', 'wp3.png']:
+    for img_pth in ['wp3.png']:
         seg.get_response(os.path.join(base_path, img_pth))
     print(np.array(errors).mean())
 
