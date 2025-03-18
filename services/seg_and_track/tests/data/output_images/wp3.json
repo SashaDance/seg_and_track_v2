@@ -1,82 +1,32 @@
 {
-    "count_box_and_containers": 4,
+    "count_box_and_containers": 2,
     "scores": [
-        0.939,
-        0.807,
-        0.719,
-        0.263
+        0.599,
+        0.581
     ],
     "classes_ids": [
-        1,
-        1,
         1,
         1
     ],
     "tracking_ids": [
-        1,
-        4,
-        5,
-        6
+        2,
+        3
     ],
     "boxes": [
         {
-            "x_min": 986,
-            "y_min": 616,
-            "x_max": 1196,
-            "y_max": 841
-        },
-        {
-            "x_min": 947,
-            "y_min": 624,
-            "x_max": 986,
-            "y_max": 738
-        },
-        {
-            "x_min": 1394,
-            "y_min": 685,
+            "x_min": 1400,
+            "y_min": 672,
             "x_max": 1439,
-            "y_max": 848
+            "y_max": 854
         },
         {
-            "x_min": 1205,
-            "y_min": 691,
-            "x_max": 1230,
-            "y_max": 756
+            "x_min": 954,
+            "y_min": 598,
+            "x_max": 1161,
+            "y_max": 825
         }
     ],
     "poses": [
-        {
-            "rvec": [
-                [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            ],
-            "tvec": [
-                [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            ]
-        },
-        {
-            "rvec": [
-                [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            ],
-            "tvec": [
-                [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            ]
-        },
         {
             "rvec": [
                 [
@@ -123,35 +73,27 @@
         {
             "box_id": 0,
             "placed_on_shelf_with_id": -1
-        },
-        {
-            "box_id": 0,
-            "placed_on_shelf_with_id": -1
-        },
-        {
-            "box_id": 0,
-            "placed_on_shelf_with_id": -1
         }
     ],
     "shelves": [
         {
             "shelf_id": 5,
             "x": 0.042,
-            "y": 0.075,
+            "y": 0.076,
             "occupied_by_box_with_id": -1,
             "pose": {
                 "rvec": [
                     [
-                        -2.815,
-                        0.011,
-                        -0.043
+                        -2.822,
+                        0.003,
+                        -0.014
                     ]
                 ],
                 "tvec": [
                     [
                         0.042,
-                        0.075,
-                        0.293
+                        0.076,
+                        0.363
                     ]
                 ]
             }

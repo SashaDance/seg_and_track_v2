@@ -50,7 +50,7 @@ def save_output(task_id, image_path, response, img, base_dir=None):
 
 class SegAndTrack:
     def __init__(self):
-        model_path = hf_hub_download(repo_id="sashaaadaaance/yolo11-s", filename="best.pt")
+        model_path = hf_hub_download(repo_id="sashaaadaaance/yolo11m-seg", filename="best.pt")
         self.person_class_id = 0
         self.container_class_id = 1
         self.box_class_id = 2
@@ -211,6 +211,11 @@ class SegAndTrack:
     def recognize_obstacles(self, boxes_masks: list[np.ndarray], 
                             shelf_masks: list[np.ndarray],
                             class_ids: list[int]) -> tuple[list[bool], bool]:
+        # Check mean distance to boxes to know current way point
+        if self.mean_z >= 0.6:
+            threshold = 0.18
+        else:
+            threshold = 0.08
         # Checking whether box is on the floor
         filtered_flags = []
         for box_mask in boxes_masks:
@@ -218,7 +223,7 @@ class SegAndTrack:
             box_point_cloud = self.point_cloud[:, box_mask.astype(bool)]
             for shelf_mask in shelf_masks:
                 shelf_point_cloud = self.point_cloud[:, shelf_mask.astype(bool)]
-                if abs(box_point_cloud[1].max() - shelf_point_cloud[1].min()) < 0.08:  # y axis points down
+                if abs(box_point_cloud[1].max() - shelf_point_cloud[1].min()) < threshold:  # y axis points down
                     on_shelf = True
                     break
             if not on_shelf:
@@ -228,19 +233,10 @@ class SegAndTrack:
             
         return filtered_flags, self.person_class_id in class_ids
 
-    def check_box_sizes(self, depth_map: np.ndarray, poses: list[dict],
-                        marker_ids: list[int], masks: list[np.ndarray]) -> bool:
+    def check_box_sizes(self, marker_ids: list[int], masks: list[np.ndarray]) -> bool:
         right_size_flags = True
-        # Calculating mean distance to boxes to know current way point
-        mean_z = 0
-        for pose in poses:
-            z = pose["tvec"][0][-1]
-            mean_z += z
-        if len(poses) == 0:
-            mean_z = 0
-        else:
-            mean_z /= len(poses)
-        if mean_z >= 0.6:
+        # Check mean distance to boxes to know current way point
+        if self.mean_z >= 0.6:
             threshold = 0.05
         else:
             threshold = 0.03
@@ -371,8 +367,8 @@ class SegAndTrack:
                         conf.pop(i)
                         class_ids.pop(i)
                         boxes.pop(i)
-                        np.delete(masks_in_rois, i, axis=0)
-                        np.delete(rois, i, axis=0)
+                        masks_in_rois = np.delete(masks_in_rois, i, axis=0)
+                        rois = np.delete(rois, i, axis=0)
 
         mask_messages = [to_mask_msg(mask_in_roi, roi, w, h) for mask_in_roi, roi in zip(masks_in_rois, rois)]
         masks_in_rois = reconstruct_masks(mask_messages)
@@ -387,12 +383,22 @@ class SegAndTrack:
         filtered_class_ids = [class_ids[i] for i in filtered_indices if i < len(class_ids)]
         filtered_masks_in_rois = [masks_in_rois[i] for i in filtered_indices if i < len(masks_in_rois)]
 
+        # Calculating mean distance to boxes to know current way point
+        self.mean_z = 0
+        for pose in filtered_marker_poses:
+            z = pose["tvec"][0][-1]
+            self.mean_z += z
+        if len(filtered_marker_poses) == 0:
+            self.mean_z = 0
+        else:
+            self.mean_z /= len(filtered_marker_poses)
+
         # Obstalce recognition
         shelf_masks = [masks_in_rois[i] for i in shelves_indices]
         filtered_flags, man_in_frame = self.recognize_obstacles(filtered_masks_in_rois, shelf_masks, class_ids)
         
         # Checking sizes of boxes and containers
-        right_size_flags = self.check_box_sizes(depth_map, filtered_marker_poses, filtered_marker_ids, filtered_masks_in_rois)
+        right_size_flags = self.check_box_sizes(filtered_marker_ids, filtered_masks_in_rois)
         
         # Associating boxes/containers with the shelves
         shelves, boxes_output, box_on_box, message = self.fuse_mask_aruco(
@@ -478,7 +484,7 @@ if __name__ == '__main__':
     # base_path = os.path.join(os.getcwd()[:-4], 'tests\\data\\images')
     base_path = '/home/sashadance/python_projects/proj_android/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/images'
     # for img_pth in ['wp0.png', 'wp1.png', 'wp1_2box.png', 'wp2.png', 'wp3.png']:
-    for img_pth in ['wp3.png']:
+    for img_pth in ['wp0.png']:
         seg.get_response(os.path.join(base_path, img_pth))
     print(np.array(errors).mean())
 

@@ -1,78 +1,69 @@
 {
-    "count_box_and_containers": 4,
+    "count_box_and_containers": 3,
     "scores": [
-        0.99,
-        0.938,
-        0.791,
-        0.264
+        0.931,
+        0.858,
+        0.629
     ],
     "classes_ids": [
         1,
         1,
-        0,
-        0
+        1
     ],
     "tracking_ids": [
-        990,
         999,
-        5,
-        6
+        990,
+        3
     ],
     "boxes": [
         {
-            "x_min": 189,
-            "y_min": 126,
-            "x_max": 864,
-            "y_max": 579
+            "x_min": 846,
+            "y_min": 253,
+            "x_max": 1266,
+            "y_max": 589
         },
         {
-            "x_min": 854,
-            "y_min": 218,
-            "x_max": 1283,
-            "y_max": 568
+            "x_min": 211,
+            "y_min": 160,
+            "x_max": 825,
+            "y_max": 598
         },
         {
-            "x_min": 0,
-            "y_min": 332,
-            "x_max": 34,
-            "y_max": 555
-        },
-        {
-            "x_min": 0,
-            "y_min": 443,
-            "x_max": 35,
-            "y_max": 557
+            "x_min": 379,
+            "y_min": 163,
+            "x_max": 814,
+            "y_max": 595
         }
     ],
     "poses": [
         {
             "rvec": [
                 [
-                    -2.938,
-                    0.052,
-                    0.023
+                    -2.784,
+                    0.001,
+                    -0.037
                 ]
             ],
             "tvec": [
                 [
-                    -0.113,
-                    -0.072,
-                    0.205
+                    0.223,
+                    -0.058,
+                    0.262
                 ]
             ]
         },
         {
             "rvec": [
                 [
-                    -2.888,
-                    -0.019,
-                    -0.128
+                    -2.771,
+                    0.017,
+                    -0.014
                 ]
             ],
             "tvec": [
                 [
-                    0.229,
-                    -0.061,
+                    -0.109,
+                    -0.068,
                     0.235
                 ]
             ]
@@ -92,41 +83,21 @@
                     0.0
                 ]
             ]
-        },
-        {
-            "rvec": [
-                [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            ],
-            "tvec": [
-                [
-                    0.0,
-                    0.0,
-                    0.0
-                ]
-            ]
         }
     ],
-    "box_on_box": true,
+    "box_on_box": false,
     "man_in_frame": false,
     "box_container_on_floor": false,
     "box_or_container_in_frame": true,
     "right_size_flags": true,
     "boxes_output": [
         {
-            "box_id": 990,
-            "placed_on_shelf_with_id": 3
-        },
-        {
             "box_id": 999,
             "placed_on_shelf_with_id": 4
         },
         {
-            "box_id": 0,
-            "placed_on_shelf_with_id": -1
+            "box_id": 990,
+            "placed_on_shelf_with_id": 3
         },
         {
             "box_id": 0,
@@ -136,55 +107,48 @@
     "shelves": [
         {
             "shelf_id": 3,
-            "x": -0.106,
+            "x": -0.105,
             "y": 0.104,
             "occupied_by_box_with_id": 990,
             "pose": {
                 "rvec": [
                     [
-                        -2.899,
-                        0.016,
-                        0.054
+                        -2.911,
+                        0.012,
+                        -0.048
                     ]
                 ],
                 "tvec": [
                     [
-                        -0.106,
+                        -0.105,
                         0.104,
-                        0.235
+                        0.277
                     ]
                 ]
             }
         },
         {
             "shelf_id": 4,
-            "x": 0.229,
+            "x": 0.227,
             "y": 0.102,
             "occupied_by_box_with_id": 999,
             "pose": {
                 "rvec": [
                     [
-                        -2.918,
-                        -0.001,
-                        -0.141
+                        -2.898,
+                        0.013,
+                        -0.027
                     ]
                 ],
                 "tvec": [
                     [
-                        0.229,
+                        0.227,
                         0.102,
-                        0.255
+                        0.29
                     ]
                 ]
             }
         }
     ],
-    "graph_box_on_box": {
-        "id_1": 6,
-        "id_2": 5,
-        "rel_id": 2,
-        "class_name_1": "box",
-        "rel_name": "on_top",
-        "class_name_2": "box"
-    }
+    "graph_box_on_box": null
 }
