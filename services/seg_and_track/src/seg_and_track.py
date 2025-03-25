@@ -1,11 +1,7 @@
 import os
 import pathlib
 import json
-from typing import List
 import math
-import datetime
-import uuid
-
 import cv2
 import numpy as np
 import torch
@@ -14,7 +10,6 @@ from ultralytics import YOLO
 import cv2.aruco as aruco
 
 from seg_and_track_api import SegAndTrackResponse, Box, Pose, Graph
-from data import test_cases
 
 from masks import get_masks_in_rois, get_masks_rois, scale_image, reconstruct_masks
 from visualization import draw_objects
@@ -22,30 +17,19 @@ from conversions import to_mask_msg
 from depth_map import DepthEvaluator, PlaneDetector
 
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-OUTPUT_DIR = pathlib.Path("/data/seg_and_track")
-# OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+BASE_DATA_DIR = os.path.join(pathlib.Path().parent.absolute(), 'tests/data/')
+INPUT_DIR = os.path.join(BASE_DATA_DIR, 'images/')
+OUTPUT_DIR = os.path.join(BASE_DATA_DIR, 'outputs/')
+OUTPUT_DIR_JSON = pathlib.Path(os.path.join(OUTPUT_DIR, 'json/'))
+OUTPUT_DIR_IMG = pathlib.Path(os.path.join(OUTPUT_DIR, 'img/'))
+OUTPUT_DIR_JSON.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR_IMG.mkdir(parents=True, exist_ok=True)
 errors = []
 
-def save_json(data, path: pathlib.Path):
-    with path.open("w") as f:
+def save_json(data: dict, path: str):
+    with open(path, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-
-
-def save_output(task_id, image_path, response, img, base_dir=None):
-    if base_dir is None:
-        base_dir = OUTPUT_DIR
-    else:
-        base_dir = OUTPUT_DIR / base_dir
-    save_dir = base_dir / task_id
-    save_dir.mkdir(parents=True, exist_ok=True)
-    # Saving the visualization
-    cv2.imwrite(str(save_dir / "visualization.png"), img)
-    # Saving the response
-    save_json(response.dict(), save_dir / "labels.json")
-    # Saving the meta
-    meta = {"task_id": task_id, "image_path": str(image_path), "timestamp": str(datetime.datetime.now())}
-    save_json(meta, save_dir / "meta.json")
 
 
 class SegAndTrack:
@@ -251,7 +235,6 @@ class SegAndTrack:
                 is_correct_size = (1 - tolerance) * ref_width <= detected_width <= (1 + tolerance) * ref_width and (
                     1 - tolerance
                 ) * ref_height <= detected_height <= (1 + tolerance) * ref_height
-                print(detected_width, ref_width, detected_height, ref_height)
                 errors.append(min(detected_height / ref_height, ref_height / detected_height))
                 errors.append(min(detected_width / ref_width, ref_width / detected_width))
                 if not is_correct_size:
@@ -338,6 +321,7 @@ class SegAndTrack:
     def get_response(self, image_path: str) -> SegAndTrackResponse:
         img = cv2.imread(image_path)
         h, w = img.shape[:2]
+        image_id = f"{image_path.split('/')[-1].split('.')[0]}"
         # Getting depth map of an image before any processing
         depth_map = self.depth_evaluator.get_depth_map(
             img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs
@@ -459,33 +443,14 @@ class SegAndTrack:
             shelves=shelves,
             graph_box_on_box=message,
         )
-        # print(response.json())
-        # print(test_cases['test_case_' + image_path.split('/')[-1].split('.')[0]].response.json())
-        # assert response.json() == test_cases['test_case_' + image_path.split('/')[-1].split('.')[0]].response.json()
 
-        task_id = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S_") + str(uuid.uuid4())
-        # save_output(
-        #     task_id,
-        #     image_path,
-        #     response,
-        #     img_with_masks,
-        #     base_dir=datetime.datetime.now().strftime("%Y-%m-%d"),
-        # )
-        task_id = "latest"
-        # save_output(task_id, image_path, response, img_with_masks)
-        path = '/home/sashadance/python_projects/proj_android/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/output_images'
-        save_json(response.dict(), pathlib.Path(path + f"/{image_path.split('/')[-1].split('.')[0]}.json"))
-        cv2.imwrite(path + f"/{image_path.split('/')[-1]}", img_with_masks)
+        save_json(response.dict(), os.path.join(OUTPUT_DIR_JSON, f'{image_id}.json'))
+        cv2.imwrite(os.path.join(OUTPUT_DIR_IMG, f'{image_id}.png'), img_with_masks)
 
         return response
 
 if __name__ == '__main__':
     seg = SegAndTrack()
-    # base_path = os.path.join(os.getcwd()[:-4], 'tests\\data\\images')
-    base_path = '/home/sashadance/python_projects/proj_android/seg_and_track/seg_and_track_v2/services/seg_and_track/tests/data/images'
-    # for img_pth in ['wp0.png', 'wp1.png', 'wp1_2box.png', 'wp2.png', 'wp3.png']:
     for img_pth in ['wp0.png']:
-        seg.get_response(os.path.join(base_path, img_pth))
+        seg.get_response(os.path.join(INPUT_DIR, img_pth))
     print(np.array(errors).mean())
-
-
