@@ -23,8 +23,10 @@ INPUT_DIR = os.path.join(BASE_DATA_DIR, 'images/')
 OUTPUT_DIR = os.path.join(BASE_DATA_DIR, 'outputs/')
 OUTPUT_DIR_JSON = pathlib.Path(os.path.join(OUTPUT_DIR, 'json/'))
 OUTPUT_DIR_IMG = pathlib.Path(os.path.join(OUTPUT_DIR, 'img/'))
+OUTPUT_DIR_DEPTH = pathlib.Path(os.path.join(OUTPUT_DIR, 'depth/'))
 OUTPUT_DIR_JSON.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR_IMG.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR_DEPTH.mkdir(parents=True, exist_ok=True)
 errors = []
 
 def save_json(data: dict, path: str):
@@ -324,7 +326,8 @@ class SegAndTrack:
         image_id = f"{image_path.split('/')[-1].split('.')[0]}"
         # Getting depth map of an image before any processing
         depth_map = self.depth_evaluator.get_depth_map(
-            img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs
+            img, self.aruco_dict, self.aruco_params, self.camera_matrix, self.dist_coeffs,
+            save_path=os.path.join(OUTPUT_DIR_DEPTH, f'{image_id}.npy')
         )
         self.point_cloud = self.plane_detector.get_point_cloud(depth_map)
         # Getting segmentation

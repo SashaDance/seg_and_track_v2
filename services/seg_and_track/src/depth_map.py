@@ -28,7 +28,7 @@ class DepthEvaluator:
         parameters: aruco.DetectorParameters,
         camera_matrix: np.ndarray,
         distortion_coeffs: np.ndarray,
-        save_dir: str = None,
+        save_path: str = None,
         visualize: bool = False,
     ) -> np.ndarray:
         """
@@ -43,7 +43,7 @@ class DepthEvaluator:
             parameters: aruco detected parameters
             camera_matrix: camera matrix
             distortion_coeffs: distortion coefficients of a camera
-            save_dir: dir to save a depth map, None if dont save
+            save_path: path to save a depth map, None if dont save
             visualize: whether visualize depth map or not
 
         Returns
@@ -79,10 +79,8 @@ class DepthEvaluator:
             else:
                 depth = depth * lin.coef_[0] + lin.intercept_
 
-        if save_dir:
-            if not os.path.isdir(save_dir):
-                os.mkdir(save_dir)
-            np.save(os.path.join(save_dir, "depth_map.npy"), depth)
+        if save_path:
+            np.save(os.path.join(save_path), depth)
         if visualize:
             plt.imshow(depth)
             plt.colorbar()
